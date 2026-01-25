@@ -1,0 +1,59 @@
+services:
+  # 1. База данных PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: fs_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fs-network
+
+  # 2. S3 Object Storage (MinIO) - Эмулятор S3
+  minio:
+    image: minio/minio:latest
+    container_name: fs_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000" # API Port (для кода)
+      - "9001:9001" # Console Port (админка в браузере)
+    volumes:
+      - minio_data:/data
+    networks:
+      - fs-network
+
+  # 3. Автоматическое создание бакета (чтобы не делать руками)
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      # Ждем, пока MinIO поднимется (простой слип для надежности)
+      sleep 5;
+      # Используем 'alias set' вместо устаревшего 'config host add'
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      # Создаем бакет
+      /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME} || echo 'Bucket already exists';
+      # Делаем его публичным (для удобства скачивания файлов в dev режиме)
+      /usr/bin/mc anonymous set public myminio/${MINIO_BUCKET_NAME};
+      exit 0;
+      "
+    networks:
+      - fs-network
+
+networks:
+  fs-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
