@@ -90,9 +90,15 @@ export const ItemActionsMenu = ({ permissions, actions, triggerClassName, isFold
 							{item.separator && <DropdownMenuSeparator />}
 							<DropdownMenuItem
 								onClick={item.onClick}
-								className={item.variant === 'destructive' ? 'text-red-600 focus:text-red-600 focus:bg-red-50' : ''}
+								className={
+									item.variant === 'destructive'
+										? 'text-red-600 focus:bg-red-50 focus:text-red-600'
+										: ''
+								}
 							>
-								<Icon className={`mr-2 h-4 w-4 ${item.variant === 'destructive' ? 'text-red-600' : ''}`} />
+								<Icon
+									className={`mr-2 h-4 w-4 ${item.variant === 'destructive' ? 'text-red-600' : ''}`}
+								/>
 								{item.label}
 							</DropdownMenuItem>
 						</div>
