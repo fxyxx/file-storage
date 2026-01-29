@@ -56,7 +56,7 @@ export const SearchInput = () => {
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
-					placeholder="Поиск файлов и папок..."
+					placeholder="Search for files and folders..."
 					className="focus:ring-primary h-10 w-full rounded-lg border-none bg-gray-100 pr-10 pl-10 text-sm transition-all outline-none focus:bg-white focus:ring-2"
 					onFocus={() => {
 						if (debouncedQuery.length > 0) setIsOpen(true);

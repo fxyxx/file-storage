@@ -42,7 +42,7 @@ export const BrowserToolbar = ({
 
 				<Button variant="outline" size="sm" onClick={onUploadClick}>
 					<Upload className="mr-2 h-4 w-4" />
-					Download
+					Upload
 				</Button>
 
 				<input ref={fileInputRef} type="file" multiple className="hidden" onChange={onFileSelect} />

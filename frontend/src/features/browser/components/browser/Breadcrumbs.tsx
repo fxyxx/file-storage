@@ -20,7 +20,7 @@ export const Breadcrumbs = ({ folderId }: BreadcrumbsProps) => {
 		return (
 			<div className="flex items-center text-lg font-semibold">
 				<Home className="mr-2 h-5 w-5" />
-				Мои файлы
+				My files
 			</div>
 		);
 	}

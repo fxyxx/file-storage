@@ -18,7 +18,7 @@ export const SearchResults = ({ results, onClose }: SearchResultsProps) => {
 		} else {
 			openModal('PREVIEW_FILE', {
 				id: item.id,
-				name: item.originalName || '',
+				name: item.name || item.originalName || '',
 				type: 'FILE',
 			});
 		}
@@ -42,11 +42,11 @@ export const SearchResults = ({ results, onClose }: SearchResultsProps) => {
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="truncate text-sm font-medium">
-							{item.type === 'FOLDER' ? item.name : item.originalName}
+							{item.name || item.originalName}
 						</div>
 						<div className="flex items-center gap-1 truncate text-xs text-gray-400">
 							{item.path && item.path.length > 0 ? (
-								<span>at {item.path.map((p) => p.name).join(' > ')}</span>
+								<span>in {item.path.map((p) => p.name).join(' > ')}</span>
 							) : (
 								<span>at the root</span>
 							)}

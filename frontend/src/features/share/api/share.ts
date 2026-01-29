@@ -14,7 +14,7 @@ export const inviteUser = async (
 	email: string,
 	role: ShareRole,
 ): Promise<Permission> => {
-	const { data } = await api.post<Permission>('/share', {
+	const { data } = await api.post<Permission>('/share/invite', {
 		resourceType,
 		resourceId,
 		email,
