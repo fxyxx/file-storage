@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  password    String
+  fullName    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  files       File[]
+  folders     Folder[]
+  permissions Permission[] @relation("SharedWithMe")
+}
+
+model Folder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  parent    Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[] @relation("FolderHierarchy")
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  files     File[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, parentId, userId])
+}
+
+model File {
+  id           Int      @id @default(autoincrement())
+  filename     String
+  originalName String
+  size         Int
+  mimetype     String
+  s3Path       String
+  folderId     Int?
+  folder       Folder?  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum ShareRole {
+  VIEWER
+  EDITOR
+}
+
+enum ResourceType {
+  FILE
+  FOLDER
+}
+
+model Permission {
+  id           Int          @id @default(autoincrement())
+  resourceType ResourceType
+  resourceId   Int
+  userId       Int
+  user         User         @relation("SharedWithMe", fields: [userId], references: [id], onDelete: Cascade)
+  role         ShareRole
+  createdAt    DateTime     @default(now())
+
+  @@unique([resourceType, resourceId, userId])
+}
+
+model DeletedS3Key {
+  id        Int      @id @default(autoincrement())
+  s3Key     String
+  deletedAt DateTime @default(now())
+}
+
