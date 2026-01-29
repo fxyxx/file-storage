@@ -23,7 +23,11 @@ async function bootstrap() {
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('api', app, document);
 
-	app.enableCors();
+	app.enableCors({
+		origin: process.env.CORS_ORIGIN || 'https://file-storage-sandy.vercel.app',
+		methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+		credentials: true,
+	});
 
 	await app.listen(process.env.PORT || 3000);
 }

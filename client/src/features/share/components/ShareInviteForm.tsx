@@ -38,8 +38,9 @@ export const ShareInviteForm = ({ onInvite, isPending }: ShareInviteFormProps) =
 		try {
 			await onInvite(data.email, data.role);
 			reset({ email: '', role: 'VIEWER' });
-		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to invite user';
+		} catch (err: unknown) {
+			const axiosError = err as { response?: { data?: { message?: string } } };
+			const message = axiosError?.response?.data?.message || (err instanceof Error ? err.message : 'Failed to invite user');
 			setError('root', {
 				message,
 			});
