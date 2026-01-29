@@ -35,11 +35,7 @@ export class FoldersController {
 
 	@Patch(':id')
 	@ApiOperation({ summary: 'Rename folder' })
-	rename(
-		@User('id') userId: number,
-		@Param('id', ParseIntPipe) id: number,
-		@Body() dto: UpdateFolderDto,
-	) {
+	rename(@User('id') userId: number, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFolderDto) {
 		return this.foldersService.rename(userId, id, dto.name);
 	}
 

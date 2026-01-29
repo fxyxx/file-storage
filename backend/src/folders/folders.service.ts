@@ -30,8 +30,8 @@ export class FoldersService {
 					userId: userId,
 				},
 			});
-		} catch (e) {
-			if (e.code === 'P2002') {
+		} catch (e: unknown) {
+			if (e instanceof Error && 'code' in e && e.code === 'P2002') {
 				throw new BadRequestException('A folder with this name already exists.');
 			}
 			throw e;
@@ -105,8 +105,9 @@ export class FoldersService {
 				where: { id: folderId },
 				data: { name: newName },
 			});
-		} catch (e) {
-			if (e.code === 'P2002') throw new BadRequestException('The name is taken');
+		} catch (e: unknown) {
+			if (e instanceof Error && 'code' in e && e.code === 'P2002')
+				throw new BadRequestException('The name is taken');
 			throw e;
 		}
 	}

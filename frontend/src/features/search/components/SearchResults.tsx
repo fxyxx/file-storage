@@ -41,9 +41,7 @@ export const SearchResults = ({ results, onClose }: SearchResultsProps) => {
 						{item.type === 'FOLDER' ? <Folder size={18} /> : <File size={18} />}
 					</div>
 					<div className="min-w-0 flex-1">
-						<div className="truncate text-sm font-medium">
-							{item.name || item.originalName}
-						</div>
+						<div className="truncate text-sm font-medium">{item.name || item.originalName}</div>
 						<div className="flex items-center gap-1 truncate text-xs text-gray-400">
 							{item.path && item.path.length > 0 ? (
 								<span>in {item.path.map((p) => p.name).join(' > ')}</span>

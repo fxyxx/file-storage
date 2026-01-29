@@ -99,7 +99,10 @@ export class SearchRepository {
 		const resultMap = new Map<number, Array<{ id: number; name: string }>>();
 
 		rows.forEach((row) => {
-			const parsedPath = typeof row.pathJson === 'string' ? JSON.parse(row.pathJson) : row.pathJson;
+			const parsedPath: Array<{ id: number; name: string }> =
+				typeof row.pathJson === 'string'
+					? (JSON.parse(row.pathJson) as Array<{ id: number; name: string }>)
+					: (row.pathJson as unknown as Array<{ id: number; name: string }>);
 			resultMap.set(row.startId, parsedPath);
 		});
 
