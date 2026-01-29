@@ -1,5 +1,5 @@
 services:
-  # 1. База данных PostgreSQL
+  # 1. PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: fs_postgres
@@ -13,8 +13,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - fs-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # 2. S3 Object Storage (MinIO) - Эмулятор S3
+  # 2. S3 Object Storage (MinIO) - S3 Emulator
   minio:
     image: minio/minio:latest
     container_name: fs_minio
@@ -23,32 +29,104 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000" # API Port (для кода)
-      - "9001:9001" # Console Port (админка в браузере)
+      - "9000:9000" # API Port (for code)
+      - "9001:9001" # Console Port (admin panel in the browser)
     volumes:
       - minio_data:/data
     networks:
       - fs-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # 3. Автоматическое создание бакета (чтобы не делать руками)
+  # 3. Automatic bucket creation
   createbuckets:
     image: minio/mc
+    container_name: fs_createbuckets
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      # Ждем, пока MinIO поднимется (простой слип для надежности)
-      sleep 5;
-      # Используем 'alias set' вместо устаревшего 'config host add'
       /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
-      # Создаем бакет
       /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME} || echo 'Bucket already exists';
-      # Делаем его публичным (для удобства скачивания файлов в dev режиме)
       /usr/bin/mc anonymous set public myminio/${MINIO_BUCKET_NAME};
       exit 0;
       "
     networks:
       - fs-network
+
+  # 4. Backend (NestJS)
+  app:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: fs_app
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      # AWS/MinIO Configuration
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_BUCKET: ${MINIO_BUCKET_NAME}
+      AWS_ENDPOINT: http://minio:9000
+      # MinIO
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_USE_SSL: "false"
+      # App
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+    networks:
+      - fs-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # 5. Frontend (React/Vite + Nginx)
+  web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+    container_name: fs_web
+    ports:
+      - "80:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - fs-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
 networks:
   fs-network:

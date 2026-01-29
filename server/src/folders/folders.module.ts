@@ -5,9 +5,10 @@ import { FoldersRepository } from './folders.repository';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { FilesModule } from '../files/files.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-	imports: [PermissionsModule, PrismaModule, FilesModule],
+	imports: [PermissionsModule, PrismaModule, FilesModule, StorageModule],
 	controllers: [FoldersController],
 	providers: [FoldersService, FoldersRepository],
 })

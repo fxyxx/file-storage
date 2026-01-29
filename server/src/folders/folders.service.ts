@@ -1,17 +1,21 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { FoldersRepository } from './folders.repository';
 import { FilesRepository } from '../files/files.repository';
+import { STORAGE_PROVIDER, StorageProvider } from '../storage';
 
 @Injectable()
 export class FoldersService {
+	private readonly logger = new Logger(FoldersService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly permissionsService: PermissionsService,
 		private readonly foldersRepository: FoldersRepository,
 		private readonly filesRepository: FilesRepository,
+		@Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
 	) {}
 
 	async create(userId: number, dto: CreateFolderDto) {
@@ -85,13 +89,24 @@ export class FoldersService {
 		}
 
 		const s3Keys = await this.foldersRepository.findAllS3KeysInFolderRecursively(folderId);
-		if (s3Keys.length > 0) {
-			await this.prisma.recordDeletedS3Keys(s3Keys);
-		}
+		this.logger.log(`Deleting folder ${folderId}, found ${s3Keys.length} S3 keys: ${JSON.stringify(s3Keys)}`);
 
+		// Delete folder from database first (cascade deletes files records)
 		await this.prisma.folder.delete({
 			where: { id: folderId },
 		});
+
+		// Then delete files from S3 storage
+		if (s3Keys.length > 0) {
+			try {
+				await this.storage.delete(s3Keys);
+				this.logger.log(`Successfully deleted ${s3Keys.length} files from S3`);
+			} catch (error) {
+				this.logger.error(`Failed to delete files from S3: ${error}`);
+				// Record for later cleanup if immediate deletion fails
+				await this.prisma.recordDeletedS3Keys(s3Keys);
+			}
+		}
 
 		return { message: 'The folder and all contents have been deleted.' };
 	}
