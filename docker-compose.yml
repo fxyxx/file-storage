@@ -4,9 +4,9 @@ services:
     image: postgres:15-alpine
     container_name: fs_postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-filestorage}
     ports:
       - "5432:5432"
     volumes:
@@ -14,7 +14,7 @@ services:
     networks:
       - fs-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-filestorage}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,8 +26,8 @@ services:
     container_name: fs_minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
     ports:
       - "9000:9000" # API Port (for code)
       - "9001:9001" # Console Port (admin panel in the browser)
@@ -51,9 +51,9 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
-      /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME} || echo 'Bucket already exists';
-      /usr/bin/mc anonymous set public myminio/${MINIO_BUCKET_NAME};
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-admin} ${MINIO_ROOT_PASSWORD:-password123};
+      /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME:-files} || echo 'Bucket already exists';
+      /usr/bin/mc anonymous set public myminio/${MINIO_BUCKET_NAME:-files};
       exit 0;
       "
     networks:
@@ -67,21 +67,21 @@ services:
     container_name: fs_app
     environment:
       # Database
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-filestorage}?schema=public
       # JWT
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       # AWS/MinIO Configuration
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
-      AWS_BUCKET: ${MINIO_BUCKET_NAME}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-password123}
+      AWS_BUCKET: ${MINIO_BUCKET_NAME:-files}
       AWS_ENDPOINT: http://minio:9000
       # MinIO
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-files}
       MINIO_USE_SSL: "false"
       # App
       PORT: 3000
