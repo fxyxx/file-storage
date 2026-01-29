@@ -48,14 +48,15 @@ export class FoldersService {
 				this.foldersRepository.findByParentId(null, userId),
 				this.filesRepository.findByFolderId(null, userId),
 			]);
-			const fileItems = files.map((f) => ({ ...f, type: 'FILE' }));
-			const folderItems = folders.map((f) => ({ ...f, type: 'FOLDER' }));
+			const userRole = 'OWNER';
+			const fileItems = files.map((f) => ({ ...f, type: 'FILE', userRole }));
+			const folderItems = folders.map((f) => ({ ...f, type: 'FOLDER', userRole }));
 
-			return { folders: folderItems, files: fileItems, role: 'OWNER' };
+			return { folders: folderItems, files: fileItems, userRole };
 		}
 
-		const hasAccess = await this.permissionsService.checkAccess(userId, parentId, 'FOLDER'); // Viewer ok
-		if (!hasAccess) {
+		const userRole = await this.permissionsService.getUserRole(userId, parentId, 'FOLDER');
+		if (!userRole) {
 			throw new ForbiddenException('You cannot access this folder.');
 		}
 
@@ -64,10 +65,10 @@ export class FoldersService {
 			this.filesRepository.findByFolderId(parentId),
 		]);
 
-		const fileItems = files.map((f) => ({ ...f, type: 'FILE' }));
-		const folderItems = folders.map((f) => ({ ...f, type: 'FOLDER' }));
+		const fileItems = files.map((f) => ({ ...f, type: 'FILE', userRole }));
+		const folderItems = folders.map((f) => ({ ...f, type: 'FOLDER', userRole }));
 
-		return { folders: folderItems, files: fileItems };
+		return { folders: folderItems, files: fileItems, userRole };
 	}
 
 	async findOne(userId: number, folderId: number) {
@@ -91,19 +92,16 @@ export class FoldersService {
 		const s3Keys = await this.foldersRepository.findAllS3KeysInFolderRecursively(folderId);
 		this.logger.log(`Deleting folder ${folderId}, found ${s3Keys.length} S3 keys: ${JSON.stringify(s3Keys)}`);
 
-		// Delete folder from database first (cascade deletes files records)
 		await this.prisma.folder.delete({
 			where: { id: folderId },
 		});
 
-		// Then delete files from S3 storage
 		if (s3Keys.length > 0) {
 			try {
 				await this.storage.delete(s3Keys);
 				this.logger.log(`Successfully deleted ${s3Keys.length} files from S3`);
 			} catch (error) {
 				this.logger.error(`Failed to delete files from S3: ${error}`);
-				// Record for later cleanup if immediate deletion fails
 				await this.prisma.recordDeletedS3Keys(s3Keys);
 			}
 		}

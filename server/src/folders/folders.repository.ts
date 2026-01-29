@@ -31,7 +31,6 @@ export class FoldersRepository {
 	}
 
 	private async collectS3KeysRecursively(folderId: number, s3Keys: string[]): Promise<void> {
-		// Get files in current folder
 		const files = await this.prisma.file.findMany({
 			where: { folderId },
 			select: { s3Path: true },
@@ -41,7 +40,6 @@ export class FoldersRepository {
 			s3Keys.push(file.s3Path);
 		}
 
-		// Get child folders and process them recursively
 		const childFolders = await this.prisma.folder.findMany({
 			where: { parentId: folderId },
 			select: { id: true },
