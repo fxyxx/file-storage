@@ -13,24 +13,31 @@ import { StorageProvider, UploadParams, UploadResult, PresignedUrlOptions, Presi
 @Injectable()
 export class S3StorageService extends StorageProvider {
 	private readonly s3Client: S3Client;
+	private readonly s3PublicClient: S3Client;
 	private readonly bucket: string;
-	private readonly internalEndpoint: string;
-	private readonly publicEndpoint: string;
 
 	constructor(private readonly configService: ConfigService) {
 		super();
 		this.bucket = this.configService.getOrThrow<string>('AWS_BUCKET');
 		const region = this.configService.getOrThrow<string>('AWS_REGION');
-		this.internalEndpoint = this.configService.getOrThrow<string>('AWS_ENDPOINT');
-		this.publicEndpoint = this.configService.get<string>('AWS_PUBLIC_ENDPOINT') || this.internalEndpoint;
+		const credentials = {
+			accessKeyId: this.configService.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
+			secretAccessKey: this.configService.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
+		};
+		const internalEndpoint = this.configService.getOrThrow<string>('AWS_ENDPOINT');
+		const publicEndpoint = this.configService.get<string>('AWS_PUBLIC_ENDPOINT') || internalEndpoint;
 
 		this.s3Client = new S3Client({
 			region,
-			credentials: {
-				accessKeyId: this.configService.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-				secretAccessKey: this.configService.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
-			},
-			endpoint: this.internalEndpoint,
+			credentials,
+			endpoint: internalEndpoint,
+			forcePathStyle: true,
+		});
+
+		this.s3PublicClient = new S3Client({
+			region,
+			credentials,
+			endpoint: publicEndpoint,
 			forcePathStyle: true,
 		});
 	}
@@ -83,12 +90,7 @@ export class S3StorageService extends StorageProvider {
 			ResponseContentType: options?.contentType,
 		});
 
-		let url = await getSignedUrl(this.s3Client, command, { expiresIn });
-
-		// Replace internal endpoint with public endpoint for browser access
-		if (this.internalEndpoint !== this.publicEndpoint) {
-			url = url.replace(this.internalEndpoint, this.publicEndpoint);
-		}
+		const url = await getSignedUrl(this.s3PublicClient, command, { expiresIn });
 
 		return { url, expiresIn };
 	}
