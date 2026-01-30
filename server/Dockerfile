@@ -53,9 +53,10 @@ COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 # Copy the compiled application
 COPY --from=builder /app/dist ./dist
 
-# Create an entrypoint script
+# Create an entrypoint script (sed removes Windows CRLF line endings)
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
