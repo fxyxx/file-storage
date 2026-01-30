@@ -76,6 +76,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-password123}
       AWS_BUCKET: ${MINIO_BUCKET_NAME:-files}
       AWS_ENDPOINT: http://minio:9000
+      AWS_PUBLIC_ENDPOINT: http://localhost:9000
       # MinIO
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
